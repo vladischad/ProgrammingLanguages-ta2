@@ -1,3 +1,6 @@
+import java.util.HashMap;
+import java.util.Map;
+
 // This class provides a stubbed-out environment.
 // You are expected to implement the methods.
 // Accessing an undefined variable should throw an exception.
@@ -19,43 +22,47 @@
  */
 public class Environment {
 
-	private String[] map = { "x" };
+	private Map<String, Integer> map = new HashMap<>();
 
 	/**
      * Stores a variable and its value in the environment.
-     * Currently, this is a stub implementation that simply returns the given value.
      * @param var The variable name.
      * @param val The value to store.
      * @return The stored value.
      */
 	public int put(String var, int val) {
+		map.put(var, val);
 		return val;
 	}
 
 	/**
      * Retrieves the value of a given variable from the environment.
-     * Currently, this is a stub that always returns 0.
      * @param pos The position in the source code where the variable is accessed.
      * @param var The variable name.
      * @return The value of the variable.
      * @throws EvalException If the variable is undefined.
      */
-    public int get(int pos, String var) throws EvalException {
-		return 0;
+	public int get(int pos, String var) throws EvalException {
+		if (!map.containsKey(var)) {
+			throw new EvalException(pos, "undefined variable: " + var);
+		}
+		return map.get(var);
 	}
 
 	/**
      * Generates C code for variable declarations based on the stored environment.
      * @return A string containing C variable declarations.
      */
-    public String toC() {
-		String s = "";
-		String sep = " ";
-		for (String v : map) {
-			s += sep + v;
-			sep = ",";
+	public String toC() {
+		if (map.isEmpty()) return "";
+		StringBuilder sb = new StringBuilder("int ");
+		boolean first = true;
+		for (String var : map.keySet()) {
+			if (!first) sb.append(", ");
+			sb.append(var);
+			first = false;
 		}
-		return s == "" ? "" : "int" + s + ";\nx=0;x=x;\n";
+		sb.append(";\n");
+		return sb.toString();
 	}
-
 }

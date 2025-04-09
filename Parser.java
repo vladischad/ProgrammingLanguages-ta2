@@ -140,16 +140,96 @@ public class Parser {
         return new NodeAssn(id.lex(), expr);
     }
 
+
+    /**
+     * Parses a block of statements.
+     * @return A NodeBlock representing the parsed block.
+     * @throws SyntaxException If parsing fails.
+     */
+    private NodeRelop parseRelop() throws SyntaxException {
+		String[] ops = { "<", "<=", ">", ">=", "<>", "==" };
+		for (String op : ops) {
+			if (curr().equals(new Token(op))) {
+				match(op);
+				return new NodeRelop(pos(), op);
+			}
+		}
+		throw new SyntaxException(pos(), new Token("relop"), curr());
+	}
+
+	/**
+     * Parses a boolean expression (expression with a relational operator).
+     * @return A NodeBoolexpr representing the parsed boolean expression.
+     * @throws SyntaxException If parsing fails.
+     */
+    private NodeBoolexpr parseBoolexpr() throws SyntaxException {
+		NodeExpr left = parseExpr();
+		NodeRelop relop = parseRelop();
+		NodeExpr right = parseExpr();
+		return new NodeBoolexpr(left, relop, right);
+	}
+
     /**
      * Parses a statement (assignment followed by a semicolon).
      * @return A NodeStmt representing the parsed statement.
      * @throws SyntaxException If parsing fails.
      */
     private NodeStmt parseStmt() throws SyntaxException {
-        NodeAssn assn = parseAssn();
-        match(";");
-        return new NodeStmt(assn);
-    }
+		if (curr().equals(new Token("rd"))) {
+			match("rd");
+			Token id = curr();
+			match("id");
+			return new NodeStmtRd(id.lex());
+		}
+		if (curr().equals(new Token("wr"))) {
+			match("wr");
+			NodeExpr expr = parseExpr();
+			return new NodeStmtWr(expr);
+		}
+		if (curr().equals(new Token("if"))) {
+			match("if");
+			NodeBoolexpr bexpr = parseBoolexpr();
+			match("then");
+			NodeStmt thenStmt = parseStmt();
+			if (curr().equals(new Token("else"))) {
+				match("else");
+				NodeStmt elseStmt = parseStmt();
+				return new NodeStmtIf(bexpr, thenStmt, elseStmt);
+			}
+			return new NodeStmtIf(bexpr, thenStmt);
+		}
+		if (curr().equals(new Token("while"))) {
+			match("while");
+			NodeBoolexpr bexpr = parseBoolexpr();
+			match("do");
+			NodeStmt body = parseStmt();
+			return new NodeStmtWhile(bexpr, body);
+		}
+		if (curr().equals(new Token("begin"))) {
+			match("begin");
+			NodeBlock block = parseBlock();
+			match("end");
+			return new NodeStmtBlock(block);
+		}
+		NodeAssn assn = parseAssn();
+		match(";");
+		return new NodeStmt(assn);
+	}
+
+    /**
+     * Parses a block of statements (a sequence of statements).
+     * @return A NodeBlock representing the parsed block.
+     * @throws SyntaxException If parsing fails.
+     */
+    private NodeBlock parseBlock() throws SyntaxException {
+		NodeStmt stmt = parseStmt();
+		if (curr().equals(new Token(";"))) {
+			match(";");
+			NodeBlock block = parseBlock();
+			return new NodeBlock(stmt, block);
+		}
+		return new NodeBlock(stmt);
+	}
 
     /**
      * Parses a program into a parse tree.
@@ -159,9 +239,9 @@ public class Parser {
      */
     public Node parse(String program) throws SyntaxException {
         scanner = new Scanner(program);
-        scanner.next();
-        NodeStmt stmt = parseStmt();
-        match("EOF");
-        return stmt;
+		scanner.next();
+		NodeBlock block = parseBlock();
+		match("EOF");
+		return block;
     }
 }
